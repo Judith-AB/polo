@@ -1,23 +1,53 @@
- 
 <!DOCTYPE html>
 <html>
 <head>
     <title>Polo Chat Test</title>
 </head>
 <body>
-    <h2>Polo Chat — Room: room1</h2>
-    <input id="msg" type="text" placeholder="Type a message"/>
-    <button onclick="sendMessage()">Send</button>
-    <ul id="messages"></ul>
+    <h2>Polo Chat Test</h2>
+    
+    <div>
+        <h3>Step 1 — Login</h3>
+        <input id="username" type="text" placeholder="Username"/>
+        <input id="password" type="password" placeholder="Password"/>
+        <button onclick="login()">Login</button>
+        <p id="login_status"></p>
+    </div>
+
+    <div>
+        <h3>Step 2 — Chat</h3>
+        <input id="msg" type="text" placeholder="Type a message..."/>
+        <button onclick="sendMessage()">Send</button>
+        <ul id="messages"></ul>
+    </div>
 
     <script>
-        const ws = new WebSocket("ws://127.0.0.1:8000/ws/room1");
+        let ws;
 
-        ws.onmessage = function(event) {
-            const li = document.createElement("li");
-            li.textContent = event.data;
-            document.getElementById("messages").appendChild(li);
-        };
+        async function login() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+            
+            const res = await fetch("http://127.0.0.1:8000/login", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({username, password})
+            });
+
+            const data = await res.json();
+            
+            if (data.access_token) {
+                document.getElementById("login_status").textContent = "Logged in as " + username;
+                ws = new WebSocket(`ws://127.0.0.1:8000/ws/room1?token=${data.access_token}`);
+                ws.onmessage = function(event) {
+                    const li = document.createElement("li");
+                    li.textContent = event.data;
+                    document.getElementById("messages").appendChild(li);
+                };
+            } else {
+                document.getElementById("login_status").textContent = "Login failed";
+            }
+        }
 
         function sendMessage() {
             const input = document.getElementById("msg");

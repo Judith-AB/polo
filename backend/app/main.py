@@ -1,8 +1,16 @@
 from fastapi import FastAPI,HTTPException,WebSocket,WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from app.manager import ConnectionManager
 from pydantic import BaseModel
 from app.auth import hash_password,verify_password,create_token,decode_token
 app=FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 fake_db={}
 manager=ConnectionManager()
 
@@ -32,12 +40,17 @@ def login(req:LoginRequest):
     token = create_token({"sub": req.username})
     return {"access_token": token, "token_type": "bearer"}
 @app.websocket("/ws/{room_id}")
-async def connect(websocket:WebSocket,room_id:str):
+async def connect(websocket:WebSocket,room_id:str,token:str):
+    try:
+        username = decode_token(token)['sub']
+    except:
+        await websocket.close(code=1008)
+        return
     await manager.connect(websocket,room_id)
     try:
         while True:
             data=await websocket.receive_text()
-            await manager.broadcast(data, room_id)
+            await manager.broadcast(f"{username}: {data}", room_id)
     except WebSocketDisconnect:
        manager.disconnect(websocket,room_id)
     
