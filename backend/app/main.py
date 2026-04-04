@@ -1,8 +1,11 @@
-from fastapi import FastAPI,HTTPException
+from fastapi import FastAPI,HTTPException,WebSocket,WebSocketDisconnect
+from app.manager import ConnectionManager
 from pydantic import BaseModel
 from app.auth import hash_password,verify_password,create_token,decode_token
 app=FastAPI()
 fake_db={}
+manager=ConnectionManager()
+
 class RegisterRequest(BaseModel):
     username: str
     password: str
@@ -28,3 +31,13 @@ def login(req:LoginRequest):
         raise HTTPException(status_code=400, detail="Wrong Password") 
     token = create_token({"sub": req.username})
     return {"access_token": token, "token_type": "bearer"}
+@app.websocket("/ws/{room_id}")
+async def connect(websocket:WebSocket,room_id:str):
+    await manager.connect(websocket,room_id)
+    try:
+        while True:
+            data=await websocket.receive_text()
+            await manager.broadcast(data, room_id)
+    except WebSocketDisconnect:
+       manager.disconnect(websocket,room_id)
+    
