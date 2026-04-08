@@ -3,7 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.manager import ConnectionManager
 from pydantic import BaseModel
 from app.auth import hash_password,verify_password,create_token,decode_token
+from app.database import engine
 app=FastAPI()
+from app import models
+models.Base.metadata.create_all(bind=engine)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
