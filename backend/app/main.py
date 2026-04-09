@@ -3,12 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.manager import ConnectionManager
 from pydantic import BaseModel
 from app.auth import hash_password,verify_password,create_token,decode_token
-from app.database import engine,get_db,SessionLocal
+from app.database import engine,get_db,SessionLocal,REDIS_URL
 from sqlalchemy.orm import Session
-
+from app import models
+import asyncio
 
 app=FastAPI()
-from app import models
 models.Base.metadata.create_all(bind=engine)
 app.add_middleware(
     CORSMiddleware,
@@ -17,7 +17,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-manager=ConnectionManager()
+manager=ConnectionManager(REDIS_URL)
 
 class RegisterRequest(BaseModel):
     username: str
@@ -56,27 +56,36 @@ async def connect(websocket: WebSocket, room_id: str, token: str):
         await websocket.close(code=1008)
         return
     await manager.connect(websocket, room_id)
-    try:
-        while True:
-            data = await websocket.receive_text()
-            
-            # Save message to database
-            db = SessionLocal()
-            try:
-                new_message = models.Message(
-                    room_id=room_id,
-                    username=username,
-                    content=data,
-                    status="sent"
-                )
-                db.add(new_message)
-                db.commit()
-            finally:
-                db.close()
-            
-            await manager.broadcast(f"{username}: {data}", room_id)
-    except WebSocketDisconnect:
-        manager.disconnect(websocket, room_id)
+    pubsub = await manager.subscribe(room_id)
+    
+    async def receive_from_client():
+        try:
+            while True:
+                data = await websocket.receive_text()
+                db = SessionLocal()
+                try:
+                    new_message = models.Message(
+                        room_id=room_id,
+                        username=username,
+                        content=data,
+                        status="sent"
+                    )
+                    db.add(new_message)
+                    db.commit()
+                finally:
+                    db.close()
+                await manager.publish(f"{username}: {data}", room_id)
+        except WebSocketDisconnect:
+            manager.disconnect(websocket, room_id)
+
+    async def receive_from_redis():
+        async for message in pubsub.listen():
+            if message["type"] == "message":
+                text = message["data"].decode("utf-8")
+                await websocket.send_text(text)
+
+    
+    await asyncio.gather(receive_from_client(), receive_from_redis())
 @app.get("/messages/{room_id}")
 def getallmessage(room_id:str,db:Session=Depends(get_db),):
     return db.query(models.Message).filter(models.Message.room_id == room_id).all()
