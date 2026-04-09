@@ -78,5 +78,5 @@ async def connect(websocket: WebSocket, room_id: str, token: str):
     except WebSocketDisconnect:
         manager.disconnect(websocket, room_id)
 @app.get("/messages/{room_id}")
-def getalmessage(room_id:str,db:Session=Depends(get_db),):
+def getallmessage(room_id:str,db:Session=Depends(get_db),):
     return db.query(models.Message).filter(models.Message.room_id == room_id).all()
