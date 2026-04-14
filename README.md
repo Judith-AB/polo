@@ -43,7 +43,7 @@ DATABASE_URL="postgresql://postgres.tgkmygugwiwxkddnvpvk:<mypassword>@[aws-1-ap-
 
 # Redis Cloud Endpoint (AWS Southeast 1)
 REDIS_URL="redis://:<key>@redis-17163.c252.ap-southeast-1-1.ec2.cloud.redislabs.com:17163"
-
+```
 ### 2. Installation
 Make sure you are in the `backend/` directory and your virtual environment is activated:
 
@@ -53,10 +53,11 @@ python -m pip install --upgrade pip
 
 # Install all project dependencies
 pip install -r requirements.txt
-
+```
 
 ### 3. Run Development Server
 Ensure your virtual environment is activated and you are in the `backend/` directory:
 
 ```bash
 uvicorn app.main:app --reload
+```
