@@ -1,63 +1,73 @@
-# FastAPI Real-Time Chat Backend
+# Polo 
 
-A high-performance, asynchronous chat system built with **FastAPI**, **Redis Pub/Sub**, and **Supabase**. This architecture is designed for horizontal scalability, allowing WebSockets to communicate across multiple server instances.
+A real-time messaging backend built with FastAPI, WebSockets, PostgreSQL, and Redis.
 
-## System Architecture
-
-The backend uses a **Distributed Pub/Sub** pattern to synchronize messages:
-1. **FastAPI**: Manages WebSocket lifecycles and JWT verification.
-2. **Redis**: Acts as the message broker between different server nodes.
-3. **Supabase (Postgres)**: Provides persistent storage for chat history and user metadata.
-
-
-
----
-
-##  Features
-
-* **Real-time Messaging**: Low-latency communication via WebSockets.
-* **Scalable Pub/Sub**: Redis ensures users on different server instances can chat seamlessly.
-* **Persistent Storage**: Automatic message logging to Supabase PostgreSQL.
-* **JWT Authentication**: Secure handshake using OAuth2 password flow and JWT.
-* **Type Safety**: Full Pydantic model integration for request/response validation.
-
----
+Live Demo: https://polo-ffo6.onrender.com/docs
 
 ## Tech Stack
 
-* **Framework**: [FastAPI](https://fastapi.tiangolo.com/)
-* **Database**: [Supabase](https://supabase.com/) (PostgreSQL)
-* **Message Broker**: [Redis](https://redis.io/)
-* **Auth**: `python-jose` (JWT), `passlib` (Bcrypt)
+- **FastAPI** — Python web framework for building APIs
+- **WebSockets** — Real-time bidirectional communication
+- **PostgreSQL** — Relational database for persistent storage (hosted on Supabase)
+- **Redis Pub/Sub** — Message broker for horizontal scaling
+- **JWT** — Stateless authentication
+- **Docker** — Containerization
+- **GitHub Actions** — CI/CD pipeline
+- **Render** — Cloud deployment
 
----
+## Features
 
-##  Getting Started
+- User registration and login with JWT authentication
+- Password hashing with bcrypt
+- Real-time messaging using WebSockets
+- Multi-room chat support
+- JWT protected WebSocket connections
+- Persistent chat history stored in PostgreSQL
+- Message states — sent, delivered, read
+- Horizontal scaling with Redis Pub/Sub
+- Containerized with Docker
+- CI/CD pipeline with GitHub Actions
 
-### 1. Environment Setup
-Create a `.env` file in your root directory:
+## Architecture
 
-```env
-# Supabase Transaction Pooler (AWS South 1)
-DATABASE_URL="postgresql://postgres.tgkmygugwiwxkddnvpvk:<mypassword>@[aws-1-ap-south-1.pooler.supabase.com:6543/postgres](https://aws-1-ap-south-1.pooler.supabase.com:6543/postgres)"
+Client → FastAPI Server → Redis Pub/Sub → All Server Instances
+↓
+PostgreSQL (Supabase)
 
-# Redis Cloud Endpoint (AWS Southeast 1)
-REDIS_URL="redis://:<key>@redis-17163.c252.ap-southeast-1-1.ec2.cloud.redislabs.com:17163"
-```
-### 2. Installation
-Make sure you are in the `backend/` directory and your virtual environment is activated:
+**Message Flow:**
+1. Client connects to `/ws/{room_id}` with JWT token
+2. Server verifies token and accepts WebSocket connection
+3. Client sends message
+4. Server saves message to PostgreSQL
+5. Server publishes message to Redis channel
+6. All subscribed server instances receive from Redis
+7. Each instance forwards message to their connected clients
 
+## API Endpoints
+
+| Method |      Endpoint         |          Description        | Auth Required |
+|--------|-----------------------|-----------------------------|---------------|
+| GET    | `/`                   | Health check                |        No     |
+| POST   | `/register`           | Register a new user         |        No     |
+| POST   | `/login`              | Login and get JWT token     |        No     |
+| WS     | `/ws/{room_id}`       | WebSocket chat connection   |      Yes (JWT)|
+| GET    | `/messages/{room_id}` | Get chat history for a room |        No     |
+
+
+## Running Locally
+
+1. Clone the repository
 ```bash
-# Upgrade pip to the latest version
-python -m pip install --upgrade pip
-
-# Install all project dependencies
-pip install -r requirements.txt
+git clone https://github.com/Judith-AB/polo.git
+cd polo/backend
 ```
+2. Create a `.env` file with your credentials
+DATABASE_URL=your_supabase_connection_string
+REDIS_URL=your_redis_connection_string
 
-### 3. Run Development Server
-Ensure your virtual environment is activated and you are in the `backend/` directory:
-
+3. Run with Docker
 ```bash
-uvicorn app.main:app --reload
+docker-compose up --build
 ```
+
+4. Visit `http://127.0.0.1:8000/docs`
