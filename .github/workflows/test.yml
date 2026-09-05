@@ -28,6 +28,7 @@ jobs:
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         REDIS_URL: ${{ secrets.REDIS_URL }}
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
       run: |
         cd backend
         pytest tests/ -v
