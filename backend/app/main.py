@@ -94,3 +94,6 @@ def getallmessage(room_id:str,db:Session=Depends(get_db),):
 def health(db: Session = Depends(get_db)):
     db.execute(text("SELECT 1"))
     return {"status": "healthy"}
+@app.head("/health")
+def health_head():
+    return {}
