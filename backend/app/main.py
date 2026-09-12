@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from app.auth import hash_password,verify_password,create_token,decode_token
 from app.database import engine,get_db,SessionLocal,REDIS_URL
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from app import models
 import asyncio
 
@@ -89,3 +90,7 @@ async def connect(websocket: WebSocket, room_id: str, token: str):
 @app.get("/messages/{room_id}")
 def getallmessage(room_id:str,db:Session=Depends(get_db),):
     return db.query(models.Message).filter(models.Message.room_id == room_id).all()
+@app.get("/health")
+def health(db: Session = Depends(get_db)):
+    db.execute(text("SELECT 1"))
+    return {"status": "healthy"}
