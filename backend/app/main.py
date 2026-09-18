@@ -92,8 +92,9 @@ def getallmessage(room_id:str,db:Session=Depends(get_db),):
     return db.query(models.Message).filter(models.Message.room_id == room_id).all()
 @app.get("/health")
 def health(db: Session = Depends(get_db)):
-    db.execute(text("SELECT 1"))
+    db.query(models.Message).first()
     return {"status": "healthy"}
+  
 @app.head("/health")
 def health_head():
     return {}
