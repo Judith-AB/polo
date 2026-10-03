@@ -8,8 +8,15 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app import models
 import asyncio
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi import Request
 
 app=FastAPI()
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 models.Base.metadata.create_all(bind=engine)
 app.add_middleware(
     CORSMiddleware,
@@ -31,8 +38,8 @@ def root():
     return {"message": "Polo is alive"}
             
 @app.post("/register")
-
-def register(req: RegisterRequest, db: Session = Depends(get_db)):
+@limiter.limit("3/minute")
+def register(request:Request,req: RegisterRequest, db: Session = Depends(get_db)):
     if db.query(models.User).filter(models.User.username == req.username).first():
         raise HTTPException(status_code=400, detail="Username already exists")
     new_user = models.User(username=req.username, password=hash_password(req.password))
@@ -41,7 +48,8 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     return {"message": "User registered successfully"}
 
 @app.post("/login")
-def login(req: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login(request:Request, req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.username == req.username).first()
     if not user:
         raise HTTPException(status_code=400, detail="User not found")
@@ -88,8 +96,13 @@ async def connect(websocket: WebSocket, room_id: str, token: str):
     
     await asyncio.gather(receive_from_client(), receive_from_redis())
 @app.get("/messages/{room_id}")
-def getallmessage(room_id:str,db:Session=Depends(get_db),):
-    return db.query(models.Message).filter(models.Message.room_id == room_id).all()
+def getallmessage(room_id: str, skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
+    return db.query(models.Message)\
+             .filter(models.Message.room_id == room_id)\
+             .order_by(models.Message.timestamp.desc())\
+             .offset(skip)\
+             .limit(limit)\
+             .all()
 @app.get("/health")
 def health(db: Session = Depends(get_db)):
     db.query(models.Message).first()

@@ -10,7 +10,7 @@ class User(Base):
 class Message(Base):
     __tablename__='messages'
     id=Column(Integer,primary_key=True,autoincrement=True)
-    room_id=Column(String)
+    room_id=Column(String,index=True)
     username=Column(String)
     content=Column(String)
     status =Column(String)
