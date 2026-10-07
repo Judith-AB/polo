@@ -86,6 +86,8 @@ async def connect(websocket: WebSocket, room_id: str, token: str):
                 await manager.publish(f"{username}: {data}", room_id)
         except WebSocketDisconnect:
             manager.disconnect(websocket, room_id)
+            await pubsub.unsubscribe(room_id)
+            await pubsub.aclose()
 
     async def receive_from_redis():
         async for message in pubsub.listen():
